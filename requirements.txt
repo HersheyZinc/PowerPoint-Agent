@@ -2,3 +2,4 @@ openai
 python-pptx
 streamlit
 tiktoken
+pywin32
