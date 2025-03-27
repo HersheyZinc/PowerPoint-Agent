@@ -1,7 +1,7 @@
 import  os, re, pymupdf
 from pptx.util import Mm, Length
 import json, shutil
-from pptxtopdf import convert as convert_pptx_to_pdf
+# from pptxtopdf import convert as convert_pptx_to_pdf
 
 def fromEmus(emus):
     try: return round(Length(emus).mm, 2)
@@ -22,7 +22,9 @@ def render_slides(ppt_path="test.pptx", dst_dir="slide_previews"):
     pdf_path = ppt_path.replace(".pptx", ".pdf")
     if os.path.exists(pdf_path):
         os.remove(pdf_path)
-    convert_pptx_to_pdf(ppt_path, "")
+
+    # convert_pptx_to_pdf(ppt_path, "")
+    os.system(f'libreoffice --headless --convert-to pdf "{ppt_path}" --outdir ""')
 
     with pymupdf.open(pdf_path) as doc:
         for idx, page in enumerate(doc):

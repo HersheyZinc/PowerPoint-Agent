@@ -8,5 +8,4 @@ python-pptx==0.6.21
 streamlit==1.38.0
 tiktoken==0.7.0
 tqdm==4.66.4
-pptxtopdf==0.0.2
 PyMuPDF==1.25.4
