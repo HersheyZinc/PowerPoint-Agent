@@ -1,6 +1,7 @@
-import win32com.client, os, pythoncom, re
+import  os, re, pymupdf
 from pptx.util import Mm, Length
 import json, shutil
+from pptxtopdf import convert as convert_pptx_to_pdf
 
 def fromEmus(emus):
     try: return round(Length(emus).mm, 2)
@@ -15,15 +16,19 @@ def fromPts(pts):
     except: return 0
 
 
-def render_slides(ppt_path="test.pptx", dst_dir="slide_previews", slide_indexes=[0]):
+def render_slides(ppt_path="test.pptx", dst_dir="slide_previews"):
     os.makedirs(dst_dir, exist_ok=True)
-    pythoncom.CoInitialize()
-    Application = win32com.client.Dispatch("PowerPoint.Application")
-    full_path = os.getcwd()
-    Presentation = Application.Presentations.Open(os.path.join(full_path, ppt_path), WithWindow=False)
-    for slide_idx in slide_indexes:
-        Presentation.Slides[slide_idx].Export(os.path.join(full_path, f"{dst_dir}/{slide_idx}.jpg"), "JPG")
-    Application.Quit()
+    empty_directory(dst_dir)
+    pdf_path = ppt_path.replace(".pptx", ".pdf")
+    if os.path.exists(pdf_path):
+        os.remove(pdf_path)
+    convert_pptx_to_pdf(ppt_path, "")
+
+    with pymupdf.open(pdf_path) as doc:
+        for idx, page in enumerate(doc):
+            pix = page.get_pixmap()
+            pix.save(f"{dst_dir}/{idx}.png")
+
 
 
 def validate_hex(hex_string):

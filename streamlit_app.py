@@ -1,5 +1,6 @@
 import streamlit as st
 from src.agent import AgentPPT
+from src.utils import render_slides
 import os
 
 st.set_page_config(layout="wide")
@@ -11,7 +12,7 @@ if "agent" not in st.session_state:
     agent = AgentPPT()
     agent.insert_slide(summary="An empty slide to be modified")
     agent.save_ppt()
-    agent.render_all_slides()
+    render_slides(agent.ppt_path,agent.slide_preview_dir)
     st.session_state["agent"] = agent
     st.session_state["config"] = {"model": model, "slide_idx":0}
 
@@ -32,7 +33,7 @@ with col_right:
                 agent.new_ppt()
                 agent.insert_slide()
                 agent.save_ppt()
-                agent.render_all_slides()
+                render_slides(agent.ppt_path,agent.slide_preview_dir)
                 slide_idx = 0
 
 
@@ -57,7 +58,7 @@ with col_right:
                 
                 # st.chat_message("assistant").markdown(response)
                 agent.save_ppt()
-                agent.render_all_slides()
+                render_slides(agent.ppt_path,agent.slide_preview_dir)
 
 
     with tab_log:
@@ -90,5 +91,5 @@ with col_left:
 
     with slide_preview_container:
         st.session_state["config"]["slide_idx"] = slide_idx
-        slide_preview = st.image(f"{agent.slide_preview_dir}/{slide_idx}.jpg")
+        slide_preview = st.image(f"{agent.slide_preview_dir}/{slide_idx}.png")
 

@@ -68,13 +68,6 @@ class AgentPPT():
         for i, slide in enumerate(self.ppt.slides):
             print(get_slide_content(self.ppt, i))
     
-
-    def render_slide(self, slide_index):
-        render_slides(self.ppt_path, self.slide_preview_dir, [slide_index])
-
-
-    def render_all_slides(self):
-        render_slides(self.ppt_path, self.slide_preview_dir, slide_indexes=list(range(len(self.ppt.slides))))
         
     
     def plan_module(self, user_prompt):
