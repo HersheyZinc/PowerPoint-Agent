@@ -35,7 +35,7 @@ class AgentPPT():
         if file_path:
             self.ppt = Presentation(file_path)
         else:
-            self.ppt = Presentation(file_path)
+            self.ppt = Presentation()
         # self.clear_chat_history()
         # self.insert_slide()
         self.log.append("New presentation created")
@@ -125,114 +125,6 @@ class AgentPPT():
         self.chat_history.append({"role":"assistant", "content":output_str})
         print(output_str)
 
-    # def plan_module(self, user_prompt):
-
-    #     # Creates high level plans
-    #     output_str = ""
-    #     ppt_outline = get_ppt_outline(self.ppt)
-    #     prompt = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_outline}, {"role":"user", "content":user_prompt}]
-
-    #     toolkit = [a.get_openai_args() for a in apis.PLANS]
-    #     _, tool_calls = query_tools(prompt, toolkit)
-
-    #     for i, tool_call in enumerate(tool_calls):
-    #         fn_name = tool_call.function.name
-    #         fn_args = json.loads(tool_call.function.arguments)
-    #         print(fn_name, fn_args)
-    #         # continue
-    #         if fn_name == "insert_slide":
-    #             title, summary, description = fn_args["slide_title"], fn_args["slide_summary"], fn_args["slide_description"]
-    #             # layout_index = self.select_slide_layout(description)
-    #             layout_index=1
-    #             r = self.insert_slide(layout_index, summary=summary, name=title)
-    #             slide_index = len(self.ppt.slides) - 1
-
-    #             instructions = f"Modify the slide to include the following content.\nTitle: {title}\nSummary of slide content: {summary}"
-    #             output_str += f"Inserting slide index {slide_index}\n{instructions}\n\n"
-    #             r = self.action_module(slide_index, instructions, apis.ACTIONS_BASIC)
-
-    #             instructions = f"Modify the visual appearance of the slide to follow the description: {description}"
-
-    #         elif fn_name == "redo_slide":
-    #             title, summary, description = fn_args["slide_title"], fn_args["slide_summary"], fn_args["slide_description"]
-    #             slide_index = fn_args["slide_index"] - 1
-
-    #             slide = self.ppt.slides[slide_index]
-    #             slide.name, slide.summary = title, summary # Update attributes
-
-    #             instructions = f"Modify the slide to include the following content.\nTitle: {title}\nSlide visuals: {description}\nSummary of slide content: {summary}"
-    #             output_str += f"Redo-ing slide index {slide_index}\n{instructions}\n\n"
-    #             # r = self.design_module(slide_index, instructions)
-
-
-    #         elif fn_name == "modify_slide":
-    #             instructions = fn_args["instructions"]
-    #             slide_index = fn_args["slide_index"] - 1
-    #             output_str += f"Modifying slide index {slide_index}\n{instructions}\n\n"
-    #             # r = self.design_module(slide_index, instructions)
-
-    #         else: continue
-            
-            
-            
-    #         r = self.action_module(slide_index, instructions, apis.ACTIONS_ADVANCED)
-            
-        
-    #     return output_str
-
-
-    def design_module(self, slide_index, instructions="Ensure the slide is visually cohesive."):
-        return
-        # TODO: Call actions_basic or actions_advanced based on instructions
-        # TODO: Get measurements in pixels, and convert them to mm
-
-        # Render slide
-        img_path = os.path.join(self.slide_preview_dir, f"{slide_index}.jpg")
-        self.save_ppt()
-        self.render_slide(slide_index)
-        with open(img_path, "rb") as image_file:
-            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
-
-        slide_height, slide_width = fromEmus(self.ppt.slide_width), fromEmus(self.ppt.slide_width)
-        instructions += f"The actual dimensions of the slide is {slide_width}mm width and {slide_height}mm height."
-        prompt = [{"role":"system", "content":prompts.design_prompt},
-                  {"role": "user","content": 
-                   [
-                        {
-                            "type": "text",
-                            "text": instructions,
-                        },
-                        {
-                        "type": "image_url",
-                        "image_url": {"url":  f"data:image/jpeg;base64,{base64_image}","detail": "low"},
-                        },
-                    ],
-                    }
-                ]
-        
-        toolkit = [a.get_openai_args() for a in apis.DESIGNS]
-        _, tool_calls = query_tools(prompt, toolkit)
-        if not tool_calls: return "No functions called"
-        for i, tool_call in enumerate(tool_calls):
-            fn_name = tool_call.function.name
-            fn_args = json.loads(tool_call.function.arguments)
-            print(fn_name, fn_args)
-            continue
-            if fn_name == "modify_slide_basic":
-                self.action_module(slide_index, fn_args["instructions"], apis.ACTIONS_BASIC)
-            elif fn_name == "modify_slide_advanced":
-                self.action_module(slide_index, fn_args["instructions"], apis.ACTIONS_ADVANCED)
-        # print(rewritten_instructions)
-        # output_str = self.action_module(slide_index, rewritten_instructions, apis.ACTIONS_ADVANCED)
-
-        # Call action_module with instructions
-
-        # Render slide
-        # Call openai with instructions and slide render
-        # Update slide description
-        # If not satisfactory: get modified instructions and run design_module again
-        return
-        return output_str
     
 
     def action_module(self, slide_index, instructions, apis_selected=apis.ACTIONS_BASIC):
