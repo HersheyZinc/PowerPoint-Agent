@@ -31,3 +31,7 @@ You are given a pre-defined list of shapes, and are tasked to return the integer
 **Shape dictionary**
 """ + str(shape_dict)
 
+
+user_response_prompt = """You are a helpful assistant tasked with summarizing changes made to a PowerPoint presentation. You are given a user request and the response of APIs called to fulfil the request.
+Summarize the changes made to the presentation and highlight any unsuccessful changes. Do not mention the backend API calls. Keep your answer concise and within 2 sentences or less.
+"""

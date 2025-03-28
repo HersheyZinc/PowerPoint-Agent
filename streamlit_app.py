@@ -1,25 +1,22 @@
 import streamlit as st
 from src.agent import AgentPPT
-from src.utils import render_slides
 import os
 
 st.set_page_config(layout="wide")
 
-model = "gpt-4o-mini"
-
 
 if "agent" not in st.session_state:
     agent = AgentPPT()
-    agent.insert_slide(summary="An empty slide to be modified")
-    agent.save_ppt()
-    render_slides(agent.ppt_path,agent.slide_preview_dir)
+    agent.new_ppt()
+    st.session_state["slide_imgs"] = agent.render()
     st.session_state["agent"] = agent
-    st.session_state["config"] = {"model": model, "slide_idx":0}
+    st.session_state["model"] = "gpt-4o"
+    st.session_state["slide_idx"] = 0
 
 
 col_left, col_right = st.columns([0.6, 0.4])
 agent = st.session_state["agent"]
-slide_idx = st.session_state["config"]["slide_idx"]
+slide_idx = st.session_state["slide_idx"]
 
 
 with col_right:
@@ -31,9 +28,7 @@ with col_right:
             if st.button("Reset", type="primary"):
                 agent.clear_chat_history()
                 agent.new_ppt()
-                agent.insert_slide()
-                agent.save_ppt()
-                render_slides(agent.ppt_path,agent.slide_preview_dir)
+                st.session_state["slide_imgs"] = agent.render()
                 slide_idx = 0
 
 
@@ -50,15 +45,13 @@ with col_right:
 
         if prompt := st.chat_input("Type instructions to modify the current slide"):
             with chat:
+                agent.slide_idx = st.session_state["slide_idx"]
                 st.chat_message("user").markdown(prompt)
-                agent.chat_history.append({"role": "system", "content": f"The user is looking at slide {st.session_state["config"]["slide_idx"]} (Zero-indexed)"})
-                # agent.chat_history.append({"role": "user", "content": prompt})
 
                 response = agent.plan_module(prompt)
                 
-                # st.chat_message("assistant").markdown(response)
-                agent.save_ppt()
-                render_slides(agent.ppt_path,agent.slide_preview_dir)
+                st.chat_message("assistant").markdown(response)
+                st.session_state["slide_imgs"] = agent.render()
 
 
     with tab_log:
@@ -90,6 +83,5 @@ with col_left:
     
 
     with slide_preview_container:
-        st.session_state["config"]["slide_idx"] = slide_idx
-        slide_preview = st.image(f"{agent.slide_preview_dir}/{slide_idx}.png")
-
+        st.session_state["slide_idx"] = slide_idx
+        slide_preview = st.image(st.session_state["slide_imgs"][slide_idx])

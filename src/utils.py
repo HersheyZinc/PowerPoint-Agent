@@ -1,7 +1,12 @@
-import  os, re, pymupdf
+import os, re, pymupdf, sys
 from pptx.util import Mm, Length
 import json, shutil
-# from pptxtopdf import convert as convert_pptx_to_pdf
+from PIL import Image
+
+OS_NAME = sys.platform
+if OS_NAME == "win32":
+    from pptxtopdf import convert as convert_pptx_to_pdf
+    import pythoncom
 
 def fromEmus(emus):
     try: return round(Length(emus).mm, 2)
@@ -16,20 +21,29 @@ def fromPts(pts):
     except: return 0
 
 
-def render_slides(ppt_path="test.pptx", dst_dir="slide_previews"):
-    os.makedirs(dst_dir, exist_ok=True)
-    empty_directory(dst_dir)
-    pdf_path = ppt_path.replace(".pptx", ".pdf")
-    if os.path.exists(pdf_path):
-        os.remove(pdf_path)
+def ppt_to_pdf(ppt_path, dst_dir):
 
-    # convert_pptx_to_pdf(ppt_path, "")
-    os.system(f'libreoffice --headless --convert-to pdf "{ppt_path}" --outdir ""')
+    pdf_path = os.path.join(dst_dir, os.path.basename(ppt_path).replace(".pptx", ".pdf"))
 
+    if OS_NAME == "win32":
+        pythoncom.CoInitialize()
+        convert_pptx_to_pdf(ppt_path, dst_dir) # Windows
+        pythoncom.CoUninitialize()
+    else:
+        os.system(f'libreoffice --headless --convert-to pdf "{ppt_path}" --outdir {dst_dir}') # Linux
+
+    return pdf_path
+
+
+def pdf_to_img(pdf_path):
+    images = []
     with pymupdf.open(pdf_path) as doc:
         for idx, page in enumerate(doc):
             pix = page.get_pixmap()
-            pix.save(f"{dst_dir}/{idx}.png")
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            images.append(img)
+
+    return images
 
 
 

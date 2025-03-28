@@ -1,22 +1,22 @@
 from pptx import Presentation
-from .utils import render_slides, fromEmus, empty_directory
+from .utils import fromEmus, ppt_to_pdf, pdf_to_img
 from .ppt_reader import get_slide_content, get_ppt_outline
 from .ppt_writer import delete_all_shapes
 from .openai import query, query_tools
+from . prompts import user_response_prompt
 from . import apis, prompts
-import json, os, base64
+import json, os, tempfile, shutil
+
 
 # TODO
 # Ingest existing presentations -> Iterate through each slide and generate a summary
 
 
 class AgentPPT():
-    def __init__(self, model="gpt-4o-mini", dst_path="test.pptx"):
-        self.debug = True
+    def __init__(self, model="gpt-4o", dst_path="test.pptx"):
         self.ppt = None
         self.ppt_path = dst_path
-        self.slide_preview_dir = "slide_previews"
-        os.makedirs(self.slide_preview_dir, exist_ok=True)
+        self.slide_idx = 0
 
         # LLM args
         self.model = model
@@ -26,18 +26,17 @@ class AgentPPT():
         self.log = []
 
         self.new_ppt()
-        self.save_ppt()
-        self.clear_chat_history()
 
 
     def new_ppt(self, file_path=""):
-        empty_directory(self.slide_preview_dir)
         if file_path:
             self.ppt = Presentation(file_path)
         else:
             self.ppt = Presentation()
-        # self.clear_chat_history()
-        # self.insert_slide()
+            self.insert_slide()
+
+        self.slide_idx = 0
+        self.clear_chat_history()
         self.log.append("New presentation created")
         
 
@@ -69,6 +68,18 @@ class AgentPPT():
             print(get_slide_content(self.ppt, i))
     
         
+    def render(self):
+        temp_dir = tempfile.mkdtemp()
+
+        temp_ppt_path = os.path.join(temp_dir, "temp_presentation.pptx")
+        self.ppt.save(temp_ppt_path)
+        pdf_path = ppt_to_pdf(temp_ppt_path, temp_dir)
+        slide_images = pdf_to_img(pdf_path)
+
+        shutil.rmtree(temp_dir)
+
+        return slide_images
+
     
     def plan_module(self, user_prompt):
         self.chat_history.append({"role":"user", "content": user_prompt})
@@ -76,7 +87,7 @@ class AgentPPT():
 
         messages = [{"role":"system", "content":prompts.plan_prompt}] + self.chat_history[-5:] + [{"role":"system", "content":ppt_outline}]
         toolkit = [a.get_openai_args() for a in apis.PLANS]
-        _, tool_calls = query_tools(messages, toolkit)
+        _, tool_calls = query_tools(messages, toolkit, model=self.model)
 
         output_str = ""
         for i, tool_call in enumerate(tool_calls):
@@ -115,8 +126,12 @@ class AgentPPT():
                 output_str += r + "\n"
 
 
-        self.chat_history.append({"role":"assistant", "content":output_str})
-        print(output_str)
+        self.log.append(output_str)
+        system_prompt = f"{user_response_prompt}\n\nUser Request:\n{user_prompt}\n\nAPI reponses:{output_str}"
+        api_summary = query([{"role":"system", "content":system_prompt}], model=self.model)
+        self.chat_history.append({"role":"assistant", "content":api_summary})
+
+        return api_summary
 
     
 
@@ -131,7 +146,7 @@ class AgentPPT():
 
         prompt = [{"role":"system", "content": prompts.action_prompt + slide_content}, {"role": "user", "content": instructions}]
 
-        _, tool_calls = query_tools(prompt, toolkit)
+        _, tool_calls = query_tools(prompt, toolkit, model=self.model)
         print(tool_calls)
 
         output_str = f"**Modified slide {slide_index+1}**\n"
@@ -167,8 +182,8 @@ class AgentPPT():
         
         prompt = [{"role": "system", "content":prompts.select_layout_prompt + layout_s}, {"role":"user", "content":slide_description}]
 
-        r = query(prompt, json_mode=True, temperature=0.1, max_tokens=10)
-
+        r = query(prompt, json_mode=True, model=self.model, temperature=0.1, max_tokens=10)
         slide_layout_idx = int(r["id"]) # prompt engineering hardcodes json output with 'id' key
+
         return slide_layout_idx
         
