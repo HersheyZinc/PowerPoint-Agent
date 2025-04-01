@@ -1,11 +1,19 @@
 from pptx.dml.color import RGBColor
 from .utils import validate_hex, toEmus
 from pptx.util import Pt
+from pptx.parts.image import Image
+from .ppt_reader import get_shape_content
+from pptx.enum.shapes import MSO_SHAPE
 from .openai import generate_image, query
-from .prompts import select_shape_prompt
+from .prompts import *
+from io import BytesIO
+import json
+SHAPE_DICT = {getattr(MSO_SHAPE, attr):attr for attr in dir(MSO_SHAPE) if attr.isupper()}
+SHAPE_DICT = json.dumps(dict(sorted(SHAPE_DICT.items())))
 
 
 def set_shape_properties(shape, parameters):
+    print(parameters)
     if "top" in parameters:
         shape.top = toEmus(parameters["top"])
     if "left" in parameters:
@@ -15,7 +23,14 @@ def set_shape_properties(shape, parameters):
     if "width" in parameters:
         shape.width = toEmus(parameters["width"])
     if "fill_color" in parameters:
-        set_shape_fill(shape, parameters["fill_color"])
+        fill_color = parameters["fill_color"]
+        if fill_color =="transparent":
+            shape.fill.background()
+        elif validate_hex(fill_color):
+            shape.fill.solid()
+            shape.fill.fore_color.rgb = RGBColor.from_string(fill_color.replace("#",""))
+            
+
     if "has_border" in parameters:
         if parameters["has_border"]:
             shape.line.fill.solid()
@@ -25,16 +40,14 @@ def set_shape_properties(shape, parameters):
         shape.line.width = Pt(parameters["border_width"])
     if "border_color" in parameters and validate_hex(parameters["border_color"]):
         shape.line.color.rgb = RGBColor.from_string(parameters["border_color"].replace("#",""))
-    if "text" in parameters:
-        set_shape_text(shape, parameters)
 
 
-def set_shape_text(shape, parameters):
     if "text" in parameters:
         shape.text = parameters["text"]
-    for paragraph in shape.text_frame.paragraphs:
-        for run in paragraph.runs:
-            if "fill_color" in parameters and validate_hex(parameters["font_color"]):
+    if shape.has_text_frame:
+        for run in [run for run in shape.text_frame.paragraphs[0].runs] + [shape.text_frame.paragraphs[0]]:
+            
+            if "font_color" in parameters and validate_hex(parameters["font_color"]):
                 run.font.color.rgb = RGBColor.from_string(parameters["font_color"].replace("#",""))
             if "font_size" in parameters:
                 run.font.size = Pt(parameters["font_size"])
@@ -42,46 +55,56 @@ def set_shape_text(shape, parameters):
                 run.font.bold = parameters["bold"]
 
 
-def set_shape_fill(shape, fill_color):
-    if fill_color =="transparent":
-        shape.fill.background()
-    elif validate_hex(fill_color):
-        shape.fill.solid()
-        shape.fill.fore_color.rgb = RGBColor.from_string(fill_color.replace("#",""))
+def set_table_properties(shape, parameters):
+    if not shape.has_table:
+        return
+    if "table_data" in parameters:
+        table_data = parameters["table_data"]
+        data_index = 0
+        for row in shape.table.rows:
+            for col in row.cells:
+                if data_index < len(table_data):
+                    col.text = table_data[data_index]
+                    data_index += 1
+                else:
+                    col.text = ""
+    
+
+def set_image_properties(picture, parameters):
+    if "image_content" in parameters:
+        im_bytes = generate_image(parameters["image_content"])
+        im = Image.from_file(im_bytes)
+        slide_part, rId = picture.part, picture._element.blip_rId
+        image_part = slide_part.related_part(rId)
+        image_part.blob = im._blob
 
 
-def set_table_properties(table, parameters):
-    table_data = parameters["table_data"]
-    data_index = 0
-    for row in table.rows:
-        for col in row.cells:
-            if data_index < len(table_data):
-                col.text = table_data[data_index]
-                data_index += 1
-            else:
-                col.text = ""
-    return
+#------------------------------------------------------------------------------------------------------------#
 
 
-
-
-def modify_shape(slide, parameters):
-    shape_idx = parameters["shape_index"]
+def modify_shape(slide, input_parameters, model='gpt-4o-mini'):
+    shape_idx = input_parameters["shape_index"]
+    instructions = input_parameters["instructions"]
+    shape_content = get_shape_content(slide, shape_idx)
     shape = slide.shapes[shape_idx]
-    set_shape_properties(shape, parameters)
 
+    if 'PICTURE' in str(shape.shape_type):
+        prompt = modify_picture_prompt
+    elif 'CHART' in str(shape.shape_type):
+        prompt = modify_chart_prompt
+    elif 'TABLE' in str(shape.shape_type):
+        prompt = modify_table_prompt
+    else:
+        prompt = modify_shape_prompt
 
-def modify_text(slide, parameters):
-    shape_idx = parameters["shape_index"]
-    shape = slide.shapes[shape_idx]
-    set_shape_text(shape, parameters)
+    messages = [{"role":"system", "content":prompt}, {"role":"system", "content":shape_content}, {"role":"user", "content":instructions}]
 
+    output_parameters = query(messages, json_mode=True, model=model)
+    set_image_properties(shape, output_parameters)
+    set_table_properties(shape, output_parameters)
+    set_shape_properties(shape, output_parameters)
 
-def modify_picture(slide, parameters):
-    shape_idx = parameters["shape_index"]
-    shape = slide.shapes[shape_idx]
-    img = generate_image(parameters["description"])
-    shape.image = img
+    return json.dumps(output_parameters, indent=2)
 
 
 def modify_background(slide, parameters):
@@ -95,37 +118,34 @@ def modify_background(slide, parameters):
             slide.background.fill.fore_color.rgb = RGBColor.from_string(fill_color.replace("#",""))
 
 
-def modify_table(slide, parameters):
-    shape_idx = parameters["shape_index"]
-    table = slide.shapes[shape_idx]
-    set_table_properties(table, parameters)
+def insert_shape(slide, parameters, model='gpt-4o-mini'):
 
-    return
+    shape_type = parameters["shape_type"].strip().upper()
+    if shape_type == "PICTURE":
+        placeholder = BytesIO(open("src/data/placeholder.png", "rb").read())
+        picture = slide.shapes.add_picture(placeholder, 0, 0)
+
+    elif shape_type == "CHART":
+        # Get chart type
+        pass
+
+    elif shape_type == "TABLE":
+        messages = [{"role":"system", "content":select_table_dimensions_prompt}, {"role":"user", "content":parameters["instructions"]}]
+        response = query(messages, json_mode=True, max_tokens=30, model=model)
+        rows, cols = max(1, int(response["rows"])), max(1, int(response["columns"]))
+        table = slide.shapes.add_table(rows, cols, 0, 0, 50*rows, 50*cols).table
+
+    else:
+        messages = [{"role":"system", "content":select_autoshape_prompt}, {"role":"system", "content":SHAPE_DICT}, {"role":"user", "content":parameters["instructions"]}]
+        r = query(messages, json_mode=True, max_tokens=10, model=model)
+        shape_id = int(r["id"])
+
+        shape = slide.shapes.add_shape(shape_id, 10, 10, 10, 10)
+        shape.fill.solid()
 
 
-def insert_shape(slide, parameters):
-    messages = [{"role":"system", "content":select_shape_prompt}, {"role":"user", "content":parameters["shape_type"]}]
-    r = query(messages, json_mode=True, max_tokens=10)
-    shape_id = int(r["id"])
-    shape = slide.shapes.add_shape(shape_id, 10, 10, 10, 10)
-    shape.fill.solid()
-    set_shape_properties(shape, parameters)
-    return "Shape successfully inserted"
-
-
-def insert_picture(slide, parameters):
-    img = generate_image(parameters["description"])
-    shape = slide.shapes.add_picture(img, 10, 10)
-    set_shape_properties(shape, parameters)
-    return
-
-
-def insert_table(slide, parameters):
-    rows, cols = parameters["rows"], parameters["columns"]
-    table = slide.shapes.add_table(rows, cols, 10, 10, 10, 10).table
-    set_shape_properties(table, parameters)
-    set_table_properties(table, parameters)
-    return
+    modify_shape(slide, {"shape_index":len(slide.shapes)-1, "instructions":parameters["instructions"]})
+    
 
 
 def delete_shapes(slide, parameters):

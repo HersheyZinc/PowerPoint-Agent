@@ -48,7 +48,7 @@ def query_tools(chat_history, toolkit, model="gpt-4o", temperature=0, max_tokens
 
 
 def generate_image(prompt, size="512x512"):
-    image = BytesIO(open("src/data/placeholder.jpg", "rb").read())
+    image = BytesIO(open("src/data/placeholder.png", "rb").read())
     return image
     response = CLIENT.images.generate(
             prompt=prompt,
