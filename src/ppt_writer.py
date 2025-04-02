@@ -156,11 +156,11 @@ def insert_shape(ppt, slide_idx, parameters, model='gpt-4o-mini'):
         r = query(messages, json_mode=True, max_tokens=10, model=model)
         shape_id = int(r["id"])
 
-        shape = slide.shapes.add_shape(shape_id, 10, 10, 10, 10)
+        shape = slide.shapes.add_shape(shape_id, 0, 0, toEmus(10), toEmus(10))
         shape.fill.solid()
 
     response = f"Shape inserted: {shape_type} | "
-    response += modify_shape(slide, {"shape_index":len(slide.shapes)-1, "instructions":parameters["instructions"]})
+    response += modify_shape(ppt, slide_idx, {"shape_index":len(slide.shapes)-1, "instructions":parameters["instructions"]})
     return response
 
 
@@ -176,14 +176,14 @@ def delete_shapes(ppt, slide_idx, parameters, model='gpt-4o-mini'):
             remove_count += 1
         except:
             continue
-    return f"Shapes deleted: {remove_count}"
+    return f"{remove_count} shapes deleted"
 
 
 
 def delete_all_shapes(ppt, slide_idx):
     slide = ppt.slides[slide_idx]
     shape_indexes = [i for i, _ in enumerate(slide.shapes)]
-    response = delete_shapes(ppt, slide_idx, {"shape_indexes": shape_indexes})
+    response = f"Cleared slide {slide_idx} - " + delete_shapes(ppt, slide_idx, {"shape_indexes": shape_indexes})
     return response
 
 
@@ -197,5 +197,5 @@ def insert_slide(ppt, template_request, model='gpt-4o-mini'):
     slide_layout = ppt.slide_layouts[layout_idx]
     slide = ppt.slides.add_slide(slide_layout)
 
-    response = f"Slide inserted with template {slide_layout.name}"
+    response = f"Slide inserted with template: {slide_layout.name}"
     return response

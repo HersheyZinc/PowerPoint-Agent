@@ -5,6 +5,7 @@ openai==1.50.2
 openfile==0.0.7
 python-dotenv==1.0.1
 python-pptx==0.6.21
+pptxtopdf==0.0.2
 streamlit==1.38.0
 tiktoken==0.7.0
 tqdm==4.66.4

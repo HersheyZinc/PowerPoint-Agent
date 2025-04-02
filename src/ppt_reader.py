@@ -289,7 +289,8 @@ def get_ppt_content(ppt):
     ppt_content = []
     for slide_idx, slide in enumerate(ppt.slides):
         ppt_content.append(get_slide_content(ppt, slide_idx, return_json=True))
-
+    if not ppt_content:
+        return "There are no slides."
     return json.dumps(ppt_content, indent=2)
 
 

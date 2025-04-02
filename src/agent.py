@@ -4,7 +4,9 @@ from .ppt_reader import get_slide_content, get_ppt_content
 from .ppt_writer import insert_slide, delete_all_shapes
 from .openai import query, query_tools
 from . import apis, prompts
-import json, os, tempfile, shutil
+from PIL import Image
+import json, os, tempfile, shutil, datetime
+from concurrent.futures import ThreadPoolExecutor
 
 
 # TODO
@@ -16,14 +18,18 @@ class AgentPPT():
         self.ppt = None
         self.ppt_path = dst_path
         self.slide_idx = 0
+        self.verbose=True
+        self.threading=True
 
         # LLM args
         self.model = model
         self.model_temp = 0
 
         self.chat_history = []
-        self.log = []
+        
+        self.logger = []
 
+        self.log(f"AgentPPT instance created with model: {model}, src_path: src_path, dst_path: {dst_path}")
         self.new_ppt(src_path)
 
 
@@ -32,34 +38,36 @@ class AgentPPT():
             self.ppt = Presentation(file_path)
         else:
             self.ppt = Presentation()
-            self.insert_slide()
+            # self.insert_slide()
 
         self.slide_idx = 0
         self.clear_chat_history()
-        self.log.append("New presentation created")
+        self.log("New presentation created")
         
 
     def save_ppt(self):
         # Write content to pptx file
         self.ppt.save(self.ppt_path)
-        self.log.append(f"Presentation saved to {self.ppt_path}")
+        self.log(f"Presentation saved to {self.ppt_path}")
 
 
     def clear_chat_history(self):
         system_prompt = "You are an expert Powerpoint slide designer. Use the tools provided to fulfil the user's request."
-        self.chat_history = [{"role":"system", "content":system_prompt}]
-        self.log = []
+        self.chat_history = []
+        self.log("Cleared chat history.")
+
+    
+    def log(self, log_str):
+        date_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        formatted_str = f"{date_str} - {log_str}"
+        self.logger.append(formatted_str)
+        if self.verbose:
+            print(formatted_str, "\n")
 
 
     def print_chat_history(self):
         for msg in self.chat_history:
             print(f"{msg["role"]}:\n{msg["content"]}\n{'--------------'*10}")
-
-
-    def print_log(self):
-        for msg in self.log:
-            print(msg)
-            print('--------------'*10)
 
 
     def print_ppt(self):
@@ -68,6 +76,10 @@ class AgentPPT():
     
         
     def render(self):
+        if len(self.ppt.slides) == 0:
+            white_image = Image.new("RGB", (800, 600), "white")
+            return [white_image]
+
         temp_dir = tempfile.mkdtemp()
 
         temp_ppt_path = os.path.join(temp_dir, "temp_presentation.pptx")
@@ -76,122 +88,99 @@ class AgentPPT():
         slide_images = pdf_to_img(pdf_path)
 
         shutil.rmtree(temp_dir)
-
+        self.log("Rendered slides to images.")
         return slide_images
 
 
     def plan_module(self, prompt):
+        self.log(f"Calling PLAN module with prompt: {prompt}")
+
         self.chat_history.append({"role":"user", "content": prompt})
         ppt_content = get_ppt_content(self.ppt)
-        messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content}] + self.chat_history[-5:]
-        toolkit = [a.get_openai_args() for a in apis.PLANS]
-        _, tool_calls = query_tools(messages, toolkit, model=self.model)
         
+        if len(self.chat_history) == 1:
+            messages = [{"role":"system", "content":prompts.enhance_prompt}, {"role":"user", "content": prompt}]
+            enhanced_prompt = query(messages, model="gpt-4o-mini", temperature=0.1)
+            self.log("Enhanced orginal prompt:\n"+enhanced_prompt)
+
+            messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content},{"role":"user", "content":enhanced_prompt}]
+        else:
+            messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content}] + self.chat_history[-5:] + [{"role":"system", "content":f"The user is currently looking at slide {self.slide_idx}"}]
+
+        toolkit = [a.get_openai_args() for a in apis.PLANS]
+        _, tool_calls = query_tools(messages, toolkit, model=self.model, max_tokens=16000)
+
+        output_str = ""
+
         for tool_call in tool_calls:
             fn_name = tool_call.function.name
             fn_args = json.loads(tool_call.function.arguments)
-
-            output_str = ""
             if fn_name == 'insert_slide':
                 template_request = fn_args["slide_template"]
-                output_str += insert_slide(self.ppt, template_request, self.model) + "\n"
+                response = insert_slide(self.ppt, template_request, self.model)
+                output_str += response + "\n"
                 slide_idx = len(self.ppt.slides)-1
-                
+                self.log(response)
 
             elif fn_name == "redo_slide":
                 slide_idx = fn_args['slide_index']
-                output_str += delete_all_shapes(self.ppt, slide_idx) + "\n"
-
-            elif fn_name == "modify_slide":
-                slide_idx = fn_args['slide_index']
+                response = delete_all_shapes(self.ppt, slide_idx)
+                output_str += response + "\n"
+                self.log(response)
 
             else:
-                continue
+                slide_idx = fn_args['slide_index']
+
 
             if "instructions" in fn_args:
-                output_str += f"Modified slide {slide_idx} with instructions: {fn_args["instructions"]}\n"
-                output_str += self.action_module(fn_args["instructions"], slide_idx)
+                output_str += f"Modified slide {slide_idx} with instructions: {fn_args['instructions']}\n"
+                output_str += self.action_module("Modify the slide to fulfil the following:" + fn_args["instructions"], slide_idx)
 
 
-            yield output_str
+            
+        messages = [{"role":"system", "content": prompts.user_response_prompt}, {"role":"system", "content":output_str}]
+        agent_response = query(messages, model=self.model, temperature=0.2)
+        self.chat_history.append({"role":"assistant", "content":agent_response})
+        self.log("Agent response: \n" + agent_response)
+        return agent_response
 
 
     def action_module(self, prompt, slide_idx):
-        slide_content = get_slide_content(self.ppt, slide_idx)
-        slide = self.ppt.slides[slide_idx]
-        messages = [{"role":"system", "content":prompts.action_prompt}, {"role":"system", "content":slide_content}, {"role":"user", "content":prompt}]
-        toolkit = [a.get_openai_args() for a in apis.ACTIONS]
-        _, tool_calls = query_tools(messages, toolkit, model=self.model)
+        self.log(f"Calling ACTION module on slide {slide_idx} with prompt: {prompt}")
 
-        output_str = ""
-        for tool_call in tool_calls:
+        def execute_tool_call(tool_call):
             fn_name = tool_call.function.name
             fn_args = json.loads(tool_call.function.arguments)
             for api in apis.ACTIONS:
                 if api.name == fn_name:
                     try:
                         r = api.run(self.ppt, slide_idx, fn_args, self.model)
-                        output_str += f"API - {fn_name} | Status - SUCCESS | {r} | Arguments - {fn_args}\n"
+                        return f"API - {fn_name} | Status - SUCCESS | {r} | Arguments - {fn_args}"
                     except Exception as e:
-                        output_str += f"API - {fn_name} | Status - FAILED | parameters - {fn_args} | {e}\n"
+                        return f"API - {fn_name} | Status - FAILED | parameters - {fn_args} | {e}"
+                    
 
+
+        slide_content = get_slide_content(self.ppt, slide_idx)
+        slide = self.ppt.slides[slide_idx]
+        messages = [{"role":"system", "content":prompts.action_prompt}, {"role":"system", "content":slide_content}, {"role":"user", "content":prompt}]
+        toolkit = [a.get_openai_args() for a in apis.ACTIONS]
+        _, tool_calls = query_tools(messages, toolkit, model=self.model)
+
+        if self.threading:
+            with ThreadPoolExecutor() as executor:
+                results = executor.map(execute_tool_call, tool_calls)
+                output_str = "\n".join(results)
+        else:
+            output_str = ""
+            for tool_call in tool_calls:
+                output_str += execute_tool_call(tool_call) + "\n"
+
+
+
+        self.log(output_str)
         return output_str
     
-
-
-
-    
-    # def plan_module(self, user_prompt):
-    #     self.chat_history.append({"role":"user", "content": user_prompt})
-    #     ppt_outline = get_ppt_content(self.ppt)
-
-    #     messages = [{"role":"system", "content":prompts.plan_prompt}] + self.chat_history[-5:] + [{"role":"system", "content":ppt_outline}]
-    #     toolkit = [a.get_openai_args() for a in apis.PLANS]
-    #     _, tool_calls = query_tools(messages, toolkit, model=self.model)
-
-    #     output_str = ""
-    #     for i, tool_call in enumerate(tool_calls):
-            
-    #         fn_name = tool_call.function.name
-    #         fn_args = json.loads(tool_call.function.arguments)
-    #         print(fn_name, fn_args)
-
-    #         if fn_name == "insert_slide":
-    #             slide_template = fn_args["slide_template"]
-    #             instructions = fn_args["instructions"]
-    #             layout_index = self.select_slide_layout(slide_template)
-    #             r = self.insert_slide(layout_index)
-    #             output_str += r + "\n"
-
-    #             slide_index = len(self.ppt.slides) - 1
-    #             r = self.action_module(slide_index, instructions, apis.ACTIONS_BASIC)
-    #             output_str += r + "\n"
-
-    #         elif fn_name == "clear_slide":
-    #             slide_index = fn_args["slide_index"]
-    #             slide = self.ppt.slides[slide_index]
-    #             delete_all_shapes(slide)
-    #             output_str += f"Slide {slide_index+1} cleared.\n"
-
-    #         elif fn_name == "modify_slide_basic":
-    #             slide_index = fn_args["slide_index"]
-    #             instructions = fn_args["instructions"]
-    #             r = self.action_module(slide_index, instructions, apis.ACTIONS_BASIC)
-    #             output_str += r + "\n"
-
-    #         elif fn_name == "modify_slide_advanced":
-    #             slide_index = fn_args["slide_index"]
-    #             instructions = fn_args["instructions"]
-    #             r = self.action_module(slide_index, instructions, apis.ACTIONS_ADVANCED)
-    #             output_str += r + "\n"
-
-
-    #     self.log.append(output_str)
-    #     system_prompt = f"{user_response_prompt}\n\nUser Request:\n{user_prompt}\n\nAPI reponses:{output_str}"
-    #     api_summary = query([{"role":"system", "content":system_prompt}], model=self.model)
-    #     self.chat_history.append({"role":"assistant", "content":api_summary})
-
-    #     return api_summary
 
 
     def insert_slide(self, layout_idx=1, name="", summary="", script=""):

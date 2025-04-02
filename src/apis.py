@@ -31,11 +31,6 @@ class API():
         
 
 PLANS = [
-    API(name="redo_slide", description="Empty the content of a specified slide and modifies it according to the instructions given.", required=['slide_index'], function=delete_all_shapes,
-        parameters={
-            "slide_index": {"description": "Index of the slide to clear.", "type": "integer"},
-            "instructions": {"description": "Detailed instructions for modifying an empty slide. Skip this parameter to leave slide blank.", "type": "string"},
-        }),
     API(name="modify_slide", description="Modifies a specified slide according to the instructions given.", required=['slide_index', 'instructions'],
         parameters={
             "slide_index": {"description": "Index of the slide to update.", "type": "integer"},
@@ -46,6 +41,11 @@ PLANS = [
             "slide_template": {"description": "Description of the slide layout, e.g., 'Title with two side-by-side textboxes'.", "type": "string"},
             "instructions": {"description": "Detailed instructions for modifying a slide tempplate. Skip this parameter to leave slide blank.", "type": "string"},
         }),
+    # API(name="redo_slide", description="Empty the content of a specified slide and modifies it according to the instructions given.", required=['slide_index'], function=delete_all_shapes,
+    #     parameters={
+    #         "slide_index": {"description": "Index of the slide to clear.", "type": "integer"},
+    #         "instructions": {"description": "Detailed instructions for modifying an empty slide. Skip this parameter to leave slide blank.", "type": "string"},
+    #     }),
 ]
 
 # DESIGNS = [

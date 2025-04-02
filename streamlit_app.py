@@ -10,7 +10,7 @@ if "agent" not in st.session_state:
     agent.new_ppt()
     st.session_state["slide_imgs"] = agent.render()
     st.session_state["agent"] = agent
-    st.session_state["model"] = "gpt-4o"
+    st.session_state["model"] = "gpt-4o-mini"
     st.session_state["slide_idx"] = 0
 
 
@@ -57,9 +57,8 @@ with col_right:
     with tab_log:
         log = st.container(height=600)
         with log:
-            for msg in agent.log:
-                for m in msg.split("\n"):
-                    st.write(m)
+            for msg in agent.logger:
+                st.write(msg)
 
 
 with col_left:

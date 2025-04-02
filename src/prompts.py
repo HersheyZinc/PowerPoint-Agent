@@ -1,30 +1,36 @@
 
-design_prompt = """You are an expert in PowerPoint design. You are shown a screenshot of the slide that has been resized to 512x512 pixels and you are tasked to ensure that the slide is visually cohesive and appealing.
-Generate an ordered list of instructions on how each element in the slide should be modified. 
-1. **Visual Coherence**: Ensure that all texts are readable and visual elements are not obstructed or outside the slide. For example, a shape's top + height should not exceed the slide height.
-2. **Color**: Specify all colors in hexcode. Unless stated otherwise, use colors already present in the slide theme.
-3. **Alignment**: Ensure that shapes adjacent to each other are aligned.
 
-Only return function calls. Return nothing if no changes are to be made.
+enhance_prompt = """Given a user query, enhance it by specifying details such as slide structure, key content, formatting preferences, and additional useful information. Ensure the output provides a clear and structured set of instructions for generating a well-organized PowerPoint presentation."
+
+Examples:
+
+User Query: "Plan a 7-day trip to Seoul."
+Enhanced Query: "Plan a 7-day trip to Seoul. There should be one slide for each day, each showing points of interest to visit. Insert a slide on public transport options in Korea."
+
+User Query: "Explain the theory of relativity."
+Enhanced Query: "Create a PowerPoint explaining the theory of relativity. Include an introduction slide, a slide on special relativity, a slide on general relativity, and a concluding slide with real-world applications. Use simple diagrams to illustrate key concepts."
+
+User Query: "Make a presentation on machine learning."
+Enhanced Query: "Create a PowerPoint presentation on machine learning. Include an introduction slide, slides on supervised, unsupervised, and reinforcement learning, real-world applications, and a summary slide. Use bullet points and visuals to enhance understanding."
 """
 
-plan_prompt = """You are an AI assistant tasked with modifying a PowerPoint presentation based on user instructions. 
-Your goal is to ensure that the slides are well-structured, visually appealing, and aligned with the intended message. Follow these steps:
+plan_prompt = """You are an AI assistant specialized in modifying PowerPoint presentations based on user instructions. Your goal is to enhance the slides by improving their structure, visual appeal, and alignment with the intended message. Follow these steps:
 
-1. Analyze the existing PowerPoint slides to understand their structure, content, and design. Identify key themes, formatting styles, and the target audience. Note any inconsistencies in fonts, colors, or slide layouts.
+1. Analyze the Existing Presentation: Review the PowerPoint slides to understand their structure, content, and design. Identify key themes and formatting styles.
 
-2. Modify the slides based on user input.
+2. Apply Modifications: Adjust slides based on user instructions, refining content, layout, and visuals as needed to improve clarity and impact.
 
-3. Unless specified by the user, you should insert additional slides to space out packed content. Each slide should only contain up to 5 bullet points.
+3. Optimize Readability: If a slide contains excessive information, split it into multiple slides to enhance readability. Unless specified otherwise, limit each slide to a maximum of five bullet points.
 
-4. Ensure the final presentation is polished and professional. Check for consistent formatting, proper grammar and spelling, and overall coherence.
+4. Ensure Professional Quality: Maintain consistent formatting, check grammar and spelling, and ensure logical coherence across all slides.
 
-5. Only return function calls.
+5. Output Requirements: Respond only with function calls, without additional text. You may call up to 20 functions.
 """
 
 action_prompt = """You are an expert in PowerPoint presentations working on an existing slide. You are given a texual representation of a slide, and instructions to modify it.
 Your task is to identify the correct slide elements and call the corresponding functions to modify them according to the instructions.
 Your instructions must always be precise, e.g. instead of saying top left of the slide, specify top = 0 and left = 0.
+When modifying text, ensure that point forms are preceded only by newlines. Remove manually inserted bullet points ('-', '•') from the input.
 
 Only return function calls.
 """
@@ -34,7 +40,7 @@ Your task is to identify the correct shape attributes to modify, and the corresp
 
 Shape Attributes
 {
-'text': {'description': 'Text string to overwrite with. Automatically converts new lines into bullet points.', 'type': 'string'},
+'text': {'description': 'Text string to overwrite with. Do not manually insert bullet points — these are handled automatically.', 'type': 'string'},
 'font_color': {'description': 'Text font color, in hex color code.', 'type': 'string'},
 'font_size': {'description': 'Text font size', 'type': 'integer'},
 'bold': {'description': 'Whether the text is bolded', 'type':'boolean'},
