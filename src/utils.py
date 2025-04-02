@@ -9,10 +9,12 @@ if OS_NAME == "win32":
     import pythoncom
 
 def fromEmus(emus):
+    # Convert emus to mm
     try: return round(Length(emus).mm, 2)
     except: return 0
     
 def toEmus(length):
+    # Convert mm to emus
     try: return Mm(length)
     except: return 0
 

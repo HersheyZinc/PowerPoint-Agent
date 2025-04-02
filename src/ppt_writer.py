@@ -13,7 +13,6 @@ SHAPE_DICT = json.dumps(dict(sorted(SHAPE_DICT.items())))
 
 
 def set_shape_properties(shape, parameters):
-    print(parameters)
     if "top" in parameters:
         shape.top = toEmus(parameters["top"])
     if "left" in parameters:
@@ -58,16 +57,28 @@ def set_shape_properties(shape, parameters):
 def set_table_properties(shape, parameters):
     if not shape.has_table:
         return
+    table = shape.table
     if "table_data" in parameters:
         table_data = parameters["table_data"]
         data_index = 0
-        for row in shape.table.rows:
+        for row in table.rows:
             for col in row.cells:
                 if data_index < len(table_data):
                     col.text = table_data[data_index]
                     data_index += 1
                 else:
                     col.text = ""
+
+    if "width" in parameters:
+        col_width = toEmus(parameters["width"]/len(table.columns))
+        for col in table.columns:
+            col.width = col_width
+
+    if "height" in parameters:
+        row_height = toEmus(parameters["height"]/len(table.rows))
+        for row in table.rows:
+            row.height = row_height
+
     
 
 def set_image_properties(picture, parameters):
@@ -82,7 +93,8 @@ def set_image_properties(picture, parameters):
 #------------------------------------------------------------------------------------------------------------#
 
 
-def modify_shape(slide, input_parameters, model='gpt-4o-mini'):
+def modify_shape(ppt, slide_idx, input_parameters, model='gpt-4o-mini'):
+    slide = ppt.slides[slide_idx]
     shape_idx = input_parameters["shape_index"]
     instructions = input_parameters["instructions"]
     shape_content = get_shape_content(slide, shape_idx)
@@ -104,10 +116,12 @@ def modify_shape(slide, input_parameters, model='gpt-4o-mini'):
     set_table_properties(shape, output_parameters)
     set_shape_properties(shape, output_parameters)
 
-    return json.dumps(output_parameters, indent=2)
+
+    return f"Shape modified: {json.dumps(output_parameters)}"
 
 
-def modify_background(slide, parameters):
+def modify_background(ppt, slide_idx, parameters, model='gpt-4o-mini'):
+    slide = ppt.slides[slide_idx]
     if "fill_color" in parameters:
         fill_color = parameters["fill_color"]
 
@@ -117,24 +131,26 @@ def modify_background(slide, parameters):
             slide.background.fill.solid()
             slide.background.fill.fore_color.rgb = RGBColor.from_string(fill_color.replace("#",""))
 
+        return f"Background color modified: {fill_color}"
 
-def insert_shape(slide, parameters, model='gpt-4o-mini'):
 
+def insert_shape(ppt, slide_idx, parameters, model='gpt-4o-mini'):
+    slide = ppt.slides[slide_idx]
     shape_type = parameters["shape_type"].strip().upper()
     if shape_type == "PICTURE":
         placeholder = BytesIO(open("src/data/placeholder.png", "rb").read())
         picture = slide.shapes.add_picture(placeholder, 0, 0)
 
     elif shape_type == "CHART":
-        # Get chart type
-        pass
+        return "Chart operations not implemented"
 
     elif shape_type == "TABLE":
         messages = [{"role":"system", "content":select_table_dimensions_prompt}, {"role":"user", "content":parameters["instructions"]}]
         response = query(messages, json_mode=True, max_tokens=30, model=model)
         rows, cols = max(1, int(response["rows"])), max(1, int(response["columns"]))
-        table = slide.shapes.add_table(rows, cols, 0, 0, 50*rows, 50*cols).table
-
+        table = slide.shapes.add_table(rows, cols, 0, 0, toEmus(cols*40), toEmus(rows*12)).table
+    elif shape_type == "TEXT_BOX":
+        textbox = slide.shapes.add_textbox(0, 0, toEmus(50), toEmus(20))
     else:
         messages = [{"role":"system", "content":select_autoshape_prompt}, {"role":"system", "content":SHAPE_DICT}, {"role":"user", "content":parameters["instructions"]}]
         r = query(messages, json_mode=True, max_tokens=10, model=model)
@@ -143,12 +159,13 @@ def insert_shape(slide, parameters, model='gpt-4o-mini'):
         shape = slide.shapes.add_shape(shape_id, 10, 10, 10, 10)
         shape.fill.solid()
 
+    response = f"Shape inserted: {shape_type} | "
+    response += modify_shape(slide, {"shape_index":len(slide.shapes)-1, "instructions":parameters["instructions"]})
+    return response
 
-    modify_shape(slide, {"shape_index":len(slide.shapes)-1, "instructions":parameters["instructions"]})
-    
 
-
-def delete_shapes(slide, parameters):
+def delete_shapes(ppt, slide_idx, parameters, model='gpt-4o-mini'):
+    slide = ppt.slides[slide_idx]
     shape_indexes = parameters["shape_indexes"]
     shapes = slide.shapes
     shapes_to_remove = [shapes[idx].element for idx in shape_indexes]
@@ -159,17 +176,26 @@ def delete_shapes(slide, parameters):
             remove_count += 1
         except:
             continue
-    return f"{remove_count} shapes successfully deleted"
+    return f"Shapes deleted: {remove_count}"
 
 
 
-def delete_all_shapes(slide):
+def delete_all_shapes(ppt, slide_idx):
+    slide = ppt.slides[slide_idx]
     shape_indexes = [i for i, _ in enumerate(slide.shapes)]
-    r = delete_shapes(slide, {"shape_indexes": shape_indexes})
-    return r
+    response = delete_shapes(ppt, slide_idx, {"shape_indexes": shape_indexes})
+    return response
 
 
+def insert_slide(ppt, template_request, model='gpt-4o-mini'):
+    layout_s = "Slide templates:\n" + "\n".join([f"{i} - {layout.name}" for i, layout in enumerate(ppt.slide_layouts)]) # Get all layouts given by slide master
+    prompt = [{"role": "system", "content":select_layout_prompt},{"role": "system", "content":layout_s}, {"role":"user", "content":template_request}]
 
+    r = query(prompt, json_mode=True, model=model, temperature=0.1, max_tokens=30)
+    layout_idx = int(r["id"])
 
+    slide_layout = ppt.slide_layouts[layout_idx]
+    slide = ppt.slides.add_slide(slide_layout)
 
-
+    response = f"Slide inserted with template {slide_layout.name}"
+    return response

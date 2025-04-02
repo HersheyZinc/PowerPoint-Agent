@@ -1,9 +1,8 @@
 from pptx import Presentation
 from .utils import fromEmus, ppt_to_pdf, pdf_to_img
 from .ppt_reader import get_slide_content, get_ppt_content
-from .ppt_writer import delete_all_shapes
+from .ppt_writer import insert_slide, delete_all_shapes
 from .openai import query, query_tools
-from . prompts import user_response_prompt
 from . import apis, prompts
 import json, os, tempfile, shutil
 
@@ -81,10 +80,46 @@ class AgentPPT():
         return slide_images
 
 
-    def action_module(self, user_prompt, slide_idx):
+    def plan_module(self, prompt):
+        self.chat_history.append({"role":"user", "content": prompt})
+        ppt_content = get_ppt_content(self.ppt)
+        messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content}] + self.chat_history[-5:]
+        toolkit = [a.get_openai_args() for a in apis.PLANS]
+        _, tool_calls = query_tools(messages, toolkit, model=self.model)
+        
+        for tool_call in tool_calls:
+            fn_name = tool_call.function.name
+            fn_args = json.loads(tool_call.function.arguments)
+
+            output_str = ""
+            if fn_name == 'insert_slide':
+                template_request = fn_args["slide_template"]
+                output_str += insert_slide(self.ppt, template_request, self.model) + "\n"
+                slide_idx = len(self.ppt.slides)-1
+                
+
+            elif fn_name == "redo_slide":
+                slide_idx = fn_args['slide_index']
+                output_str += delete_all_shapes(self.ppt, slide_idx) + "\n"
+
+            elif fn_name == "modify_slide":
+                slide_idx = fn_args['slide_index']
+
+            else:
+                continue
+
+            if "instructions" in fn_args:
+                output_str += f"Modified slide {slide_idx} with instructions: {fn_args["instructions"]}\n"
+                output_str += self.action_module(fn_args["instructions"], slide_idx)
+
+
+            yield output_str
+
+
+    def action_module(self, prompt, slide_idx):
         slide_content = get_slide_content(self.ppt, slide_idx)
         slide = self.ppt.slides[slide_idx]
-        messages = [{"role":"system", "content":prompts.action_prompt}, {"role":"system", "content":slide_content}, {"role":"user", "content":user_prompt}]
+        messages = [{"role":"system", "content":prompts.action_prompt}, {"role":"system", "content":slide_content}, {"role":"user", "content":prompt}]
         toolkit = [a.get_openai_args() for a in apis.ACTIONS]
         _, tool_calls = query_tools(messages, toolkit, model=self.model)
 
@@ -94,13 +129,16 @@ class AgentPPT():
             fn_args = json.loads(tool_call.function.arguments)
             for api in apis.ACTIONS:
                 if api.name == fn_name:
-                    # try:
-                    r = api.run(slide, fn_args)
-                    output_str += f"API - {fn_name} | parameters - {fn_args} | Status - SUCCESS\n"
-                    # except Exception as e:
-                    #     output_str += f"API - {fn_name} | parameters - {fn_args} | Status - FAILED | {e}\n"
+                    try:
+                        r = api.run(self.ppt, slide_idx, fn_args, self.model)
+                        output_str += f"API - {fn_name} | Status - SUCCESS | {r} | Arguments - {fn_args}\n"
+                    except Exception as e:
+                        output_str += f"API - {fn_name} | Status - FAILED | parameters - {fn_args} | {e}\n"
 
         return output_str
+    
+
+
 
     
     # def plan_module(self, user_prompt):
@@ -155,36 +193,6 @@ class AgentPPT():
 
     #     return api_summary
 
-    
-
-    # def action_module(self, slide_index, instructions, apis_selected=apis.ACTIONS_BASIC):
-    #     # Selects and calls the PowerPoint APIs corresponding to the instructions given
-    #     slide = self.ppt.slides[slide_index]
-    #     slide_content = get_slide_content(self.ppt, slide_index)
-    #     toolkit = [a.get_openai_args() for a in apis_selected]
-
-    #     slide_height, slide_width = fromEmus(self.ppt.slide_width), fromEmus(self.ppt.slide_width)
-    #     slide_content += f"The actual dimensions of the slide is {slide_width}mm width and {slide_height}mm height."
-
-    #     prompt = [{"role":"system", "content": prompts.action_prompt + slide_content}, {"role": "user", "content": instructions}]
-
-    #     _, tool_calls = query_tools(prompt, toolkit, model=self.model)
-    #     print(tool_calls)
-
-    #     output_str = f"**Modified slide {slide_index+1}**\n"
-    #     for tool_call in tool_calls:
-    #         fn_name = tool_call.function.name
-    #         fn_args = json.loads(tool_call.function.arguments)
-    #         for api in apis_selected:
-    #             if api.name == fn_name:
-    #                 try:
-    #                     r = api.run(slide, fn_args)
-    #                     output_str += f"API - {fn_name} | parameters - {fn_args} | Status - SUCCESS\n"
-    #                 except Exception as e:
-    #                     output_str += f"API - {fn_name} | parameters - {fn_args} | Status - FAILED | {e}\n"
-        
-    #     return output_str
-
 
     def insert_slide(self, layout_idx=1, name="", summary="", script=""):
         slide_layout = self.ppt.slide_layouts[layout_idx]
@@ -196,16 +204,4 @@ class AgentPPT():
         slide.script = script
 
         return "Slide inserted."
-
-
-    
-    # def select_slide_layout(self, slide_description):
-    #     layout_s = "Slide templates:\n" + "\n".join([f"{i} - {layout.name}" for i, layout in enumerate(self.ppt.slide_layouts)]) # Get all layouts given by slide master
-        
-    #     prompt = [{"role": "system", "content":prompts.select_layout_prompt + layout_s}, {"role":"user", "content":slide_description}]
-
-    #     r = query(prompt, json_mode=True, model=self.model, temperature=0.1, max_tokens=10)
-    #     slide_layout_idx = int(r["id"]) # prompt engineering hardcodes json output with 'id' key
-
-    #     return slide_layout_idx
         
