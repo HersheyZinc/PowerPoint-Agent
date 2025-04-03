@@ -1,4 +1,36 @@
+generate_prompt = """Generate a structured PowerPoint outline with slide titles and bullet points. Format the output as a structured text where each slide follows this format:
 
+Title: {slide_title}  
+-{bullet_point_1}  
+-{bullet_point_2}  
+-{bullet_point_3}  
+...
+
+Ensure clarity and conciseness, keeping each slide's content focused. The slides should follow a logical flow. Example output:
+
+Title: 2-Day Korea Itinerary
+-Travel Dates: 7 May to 9 May 2025 
+-Weather: Warm and sunny
+
+Title: Day 1 - Arrival
+-Morning: Arrive at Incheon Airport, check into hotel
+-Afternoon: Visit Gyeongbokgung Palace, Bukchon Hanok Village
+-Evening: N Seoul Tower, dinner at a Korean BBQ restaurant
+-Night: Explore Myeongdong night life
+
+Title: Day 2 - Exploration
+-Morning: Board the bus to Nami Island
+-Afternoon: COEX Aquarium, eat ice cem dessert at Baskin Robins
+-Evening: Arrive at Incheon Airport for departure
+
+Title: Packing List
+-Passport
+-Summer clothing  
+-Travel Adapter
+-SIM card
+-T-Money Card
+-Toiletries
+"""
 
 enhance_prompt = """Given a user query, enhance it by specifying details such as slide structure, key content, formatting preferences, and additional useful information. Ensure the output provides a clear and structured set of instructions for generating a well-organized PowerPoint presentation."
 
@@ -8,10 +40,10 @@ User Query: "Plan a 7-day trip to Seoul."
 Enhanced Query: "Plan a 7-day trip to Seoul. There should be one slide for each day, each showing points of interest to visit. Insert a slide on public transport options in Korea."
 
 User Query: "Explain the theory of relativity."
-Enhanced Query: "Create a PowerPoint explaining the theory of relativity. Include an introduction slide, a slide on special relativity, a slide on general relativity, and a concluding slide with real-world applications. Use simple diagrams to illustrate key concepts."
+Enhanced Query: "Create a PowerPoint explaining the theory of relativity. Include an introduction slide, a slide on special relativity, a slide on general relativity, and a concluding slide with real-world applications."
 
 User Query: "Make a presentation on machine learning."
-Enhanced Query: "Create a PowerPoint presentation on machine learning. Include an introduction slide, slides on supervised, unsupervised, and reinforcement learning, real-world applications, and a summary slide. Use bullet points and visuals to enhance understanding."
+Enhanced Query: "Create a PowerPoint presentation on machine learning. Include an introduction slide, slides on supervised, unsupervised, and reinforcement learning, real-world applications, and a summary slide."
 """
 
 plan_prompt = """You are an AI assistant specialized in modifying PowerPoint presentations based on user instructions. Your goal is to enhance the slides by improving their structure, visual appeal, and alignment with the intended message. Follow these steps:
@@ -124,5 +156,5 @@ Return your answer in the following json format:
 
 
 user_response_prompt = """You are a helpful assistant tasked with summarizing changes made to a PowerPoint presentation. You are given a user request and the response of APIs called to fulfil the request.
-Summarize the changes made to the presentation and highlight any unsuccessful changes. Do not mention the backend API calls. Keep your answer concise and within 2 sentences or less.
+Summarize whether the changes made were a success. Do not mention the backend API calls. Keep your answer concise and within 2 sentences or less.
 """

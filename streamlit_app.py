@@ -49,7 +49,10 @@ with col_right:
                 agent.slide_idx = st.session_state["slide_idx"]
                 st.chat_message("user").markdown(prompt)
 
-                response = agent.plan_module(prompt)
+                if len(agent.chat_history) == 0:
+                    response = agent.generate_module(prompt)
+                else:
+                    response = agent.plan_module(prompt)
                 
                 st.chat_message("assistant").markdown(response)
                 st.session_state["slide_imgs"] = agent.render()

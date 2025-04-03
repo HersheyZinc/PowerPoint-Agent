@@ -91,20 +91,54 @@ class AgentPPT():
         return slide_images
 
 
+    def generate_module(self, prompt):
+        self.log(f"Generating PowerPoint presentation with prompt: {prompt}")
+        self.chat_history.append({"role":"user", "content": prompt})
+        messages = [{"role":"system", "content":prompts.generate_prompt}, {"role":"user", "content": prompt}]
+        toolkit = [a.get_openai_args() for a in apis.OUTLINES]
+        response = query(messages,  model=self.model)
+        
+        for line in response.split("\n"):
+            if line.startswith("Title:"):
+                title = line[6:].strip()
+                self.insert_slide()
+                slide = self.ppt.slides[-1]
+                slide.shapes[0].text = title
+            elif line.startswith("-"):
+                text = line[1:].strip()
+                slide.shapes[1].text += text + "\n"
+
+        # output_str = f"{len(tool_calls)} slides inserted."
+        # self.log(output_str)
+        # for slide_idx, tool_call in enumerate(tool_calls):
+        #     fn_args = json.loads(tool_call.function.arguments)
+        #     title = fn_args["title"]
+        #     content = fn_args["text"]
+        #     self.insert_slide()
+        #     output_str + "\n" + self.action_module(f"Change the title to {title}. Change the content to {content}", slide_idx)
+
+
+        messages = [{"role":"system", "content": prompts.user_response_prompt}, {"role":"system", "content":response}]
+        agent_response = query(messages, model=self.model, temperature=0.2)
+        self.chat_history.append({"role":"assistant", "content":agent_response})
+        self.log("Agent response: \n" + agent_response)
+        return agent_response
+
+
     def plan_module(self, prompt):
         self.log(f"Calling PLAN module with prompt: {prompt}")
 
         self.chat_history.append({"role":"user", "content": prompt})
         ppt_content = get_ppt_content(self.ppt)
         
-        if len(self.chat_history) == 1:
-            messages = [{"role":"system", "content":prompts.enhance_prompt}, {"role":"user", "content": prompt}]
-            enhanced_prompt = query(messages, model="gpt-4o-mini", temperature=0.2)
-            self.log("Enhanced orginal prompt:\n"+enhanced_prompt)
+        # if len(self.chat_history) == 1:
+        #     messages = [{"role":"system", "content":prompts.enhance_prompt}, {"role":"user", "content": prompt}]
+        #     enhanced_prompt = query(messages, model="gpt-4o-mini", temperature=0.2)
+        #     self.log("Enhanced orginal prompt:\n"+enhanced_prompt)
 
-            messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content},{"role":"user", "content":enhanced_prompt}]
-        else:
-            messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content}] + self.chat_history[-5:] + [{"role":"system", "content":f"The user is currently looking at slide {self.slide_idx}"}]
+        #     messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content},{"role":"user", "content":enhanced_prompt}]
+        # else:
+        messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content}] + self.chat_history[-5:] + [{"role":"system", "content":f"The user is currently looking at slide {self.slide_idx}"}]
 
         toolkit = [a.get_openai_args() for a in apis.PLANS]
         _, tool_calls = query_tools(messages, toolkit, model=self.model, max_tokens=16000)

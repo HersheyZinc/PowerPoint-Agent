@@ -29,6 +29,14 @@ class API():
             response = self.function(ppt, slide_idx, function_args, model)
             return response
         
+OUTLINES = [
+    API(name="insert_slide", description="Inserts a new slide with the content.", required=['title', 'text'], function=insert_slide,
+    parameters={
+        "title": {"description": "Title of slide", "type": "string"},
+        "text": {"description": "Exact text to be displayed on slide. Bullet points are indicated by newlines.", "type": "string"},
+    }),
+]
+
 
 PLANS = [
     API(name="modify_slide", description="Modifies a specified slide according to the instructions given.", required=['slide_index', 'instructions'],
@@ -39,7 +47,7 @@ PLANS = [
     API(name="insert_slide", description="Inserts a new slide and modifies it according to the instructions given.", required=['slide_template'], function=insert_slide,
         parameters={
             "slide_template": {"description": "Description of the slide layout, e.g., 'Title with two side-by-side textboxes'.", "type": "string"},
-            "instructions": {"description": "Detailed instructions for modifying a slide tempplate. Skip this parameter to leave slide blank.", "type": "string"},
+            "instructions": {"description": "Detailed instructions for modifying a slide template. Skip this parameter to leave slide blank.", "type": "string"},
         }),
     # API(name="redo_slide", description="Empty the content of a specified slide and modifies it according to the instructions given.", required=['slide_index'], function=delete_all_shapes,
     #     parameters={
@@ -47,22 +55,6 @@ PLANS = [
     #         "instructions": {"description": "Detailed instructions for modifying an empty slide. Skip this parameter to leave slide blank.", "type": "string"},
     #     }),
 ]
-
-# DESIGNS = [
-
-#     API(name="modify_slide_basic", description="Modifies only the text and image content of existing shapes. Use by default.", required=['instructions'],
-#         parameters={
-#             "instructions": {"description": "A detailed list of instructions describing what needs to be modified on the slide. Texts should be in point form.", "type": "string"},
-#         }),
-
-#     API(name="modify_slide_advanced", description="Function to insert, delete, and manipulate slide elements such as size, color and position. Use when the instructions extend beyond text/image modification.", required=['instructions'],
-#         parameters={
-#             "instructions": {"description": "A detailed list of instructions describing what needs to be modified on the slide", "type": "string"},
-#         }),
-        
-# ]
-
-
 
 
 ACTIONS = [

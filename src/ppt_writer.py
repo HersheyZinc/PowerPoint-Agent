@@ -44,14 +44,15 @@ def set_shape_properties(shape, parameters):
     if "text" in parameters:
         shape.text = parameters["text"]
     if shape.has_text_frame:
-        for run in [run for run in shape.text_frame.paragraphs[0].runs] + [shape.text_frame.paragraphs[0]]:
-            
-            if "font_color" in parameters and validate_hex(parameters["font_color"]):
-                run.font.color.rgb = RGBColor.from_string(parameters["font_color"].replace("#",""))
-            if "font_size" in parameters:
-                run.font.size = Pt(parameters["font_size"])
-            if "bold" in parameters:
-                run.font.bold = parameters["bold"]
+        for paragraph in shape.text_frame.paragraphs:
+            for run in [run for run in paragraph.runs] + [paragraph]:
+                
+                if "font_color" in parameters and validate_hex(parameters["font_color"]):
+                    run.font.color.rgb = RGBColor.from_string(parameters["font_color"].replace("#",""))
+                if "font_size" in parameters:
+                    run.font.size = Pt(parameters["font_size"])
+                if "bold" in parameters:
+                    run.font.bold = parameters["bold"]
 
 
 def set_table_properties(shape, parameters):
@@ -191,7 +192,7 @@ def insert_slide(ppt, template_request, model='gpt-4o-mini'):
     layout_s = "Slide templates:\n" + "\n".join([f"{i} - {layout.name}" for i, layout in enumerate(ppt.slide_layouts)]) # Get all layouts given by slide master
     prompt = [{"role": "system", "content":select_layout_prompt},{"role": "system", "content":layout_s}, {"role":"user", "content":template_request}]
 
-    r = query(prompt, json_mode=True, model=model, temperature=0.1, max_tokens=30)
+    r = query(prompt, json_mode=True, model=model, temperature=0, max_tokens=30)
     layout_idx = int(r["id"])
 
     slide_layout = ppt.slide_layouts[layout_idx]
