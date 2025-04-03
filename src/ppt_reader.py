@@ -179,7 +179,7 @@ class Textbox(BasicShape):
     
     @property
     def style_info(self):
-        return f'bold={self.bold}, italic={self.italic}, underline={self.underline}, size={self.size}, color={self.color}, fill={self.fill}, font style={self.font_name}, line_space={self.line_spacing}, align={self.align}'
+        return f'bold={self.bold}, italic={self.italic}, underline={self.underline}, font size={self.size}, color={self.color}, fill={self.fill}, font style={self.font_name}, line_space={self.line_spacing}, align={self.align}'
 
     @property
     def description(self):
@@ -217,7 +217,7 @@ class Placeholder(BasicShape):
     
     @property
     def style_info(self):
-        return f'bold={self.bold}, italic={self.italic}, underline={self.underline}, size={self.size}, color={self.color}, fill={self.fill}, font style={self.font_name}, line_space={self.line_spacing}, align={self.align}\n'
+        return f'bold={self.bold}, italic={self.italic}, underline={self.underline}, font size={self.size}, color={self.color}, fill={self.fill}, font style={self.font_name}, line_space={self.line_spacing}, align={self.align}\n'
 
 
 

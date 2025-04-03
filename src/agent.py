@@ -71,8 +71,7 @@ class AgentPPT():
 
 
     def print_ppt(self):
-        for i, slide in enumerate(self.ppt.slides):
-            print(get_slide_content(self.ppt, i))
+        print(get_ppt_content(self.ppt))
     
         
     def render(self):
@@ -100,7 +99,7 @@ class AgentPPT():
         
         if len(self.chat_history) == 1:
             messages = [{"role":"system", "content":prompts.enhance_prompt}, {"role":"user", "content": prompt}]
-            enhanced_prompt = query(messages, model="gpt-4o-mini", temperature=0.1)
+            enhanced_prompt = query(messages, model="gpt-4o-mini", temperature=0.2)
             self.log("Enhanced orginal prompt:\n"+enhanced_prompt)
 
             messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content},{"role":"user", "content":enhanced_prompt}]
@@ -134,7 +133,7 @@ class AgentPPT():
 
             if "instructions" in fn_args:
                 output_str += f"Modified slide {slide_idx} with instructions: {fn_args['instructions']}\n"
-                output_str += self.action_module("Modify the slide to fulfil the following:" + fn_args["instructions"], slide_idx)
+                output_str += self.action_module("Modify the slide according to the following instructions: " + fn_args["instructions"], slide_idx)
 
 
             

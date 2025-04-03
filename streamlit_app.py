@@ -10,7 +10,6 @@ if "agent" not in st.session_state:
     agent.new_ppt()
     st.session_state["slide_imgs"] = agent.render()
     st.session_state["agent"] = agent
-    st.session_state["model"] = "gpt-4o-mini"
     st.session_state["slide_idx"] = 0
 
 
@@ -36,6 +35,8 @@ with col_right:
         chat = st.container(height=600)
         # 
         with chat:
+            with st.chat_message("assistant"):
+                st.markdown("Welcome to AgentPPT! Enter an idea for a PowerPoint presentation to get started!")
             for message in st.session_state["agent"].chat_history:
                 if message["role"] == "system":
                     continue

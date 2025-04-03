@@ -29,9 +29,7 @@ plan_prompt = """You are an AI assistant specialized in modifying PowerPoint pre
 
 action_prompt = """You are an expert in PowerPoint presentations working on an existing slide. You are given a texual representation of a slide, and instructions to modify it.
 Your task is to identify the correct slide elements and call the corresponding functions to modify them according to the instructions.
-Your instructions must always be precise, e.g. instead of saying top left of the slide, specify top = 0 and left = 0.
-When modifying text, ensure that point forms are preceded only by newlines. Remove manually inserted bullet points ('-', '•') from the input.
-
+**Do not copy text from the instructions unless it is enclosed in quotation marks (“ ”).** Instead, **rephrase, summarize, or enhance** the text to improve clarity and impact. 
 Only return function calls.
 """
 
