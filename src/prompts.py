@@ -61,7 +61,8 @@ plan_prompt = """You are an AI assistant specialized in modifying PowerPoint pre
 
 action_prompt = """You are an expert in PowerPoint presentations working on an existing slide. You are given a texual representation of a slide, and instructions to modify it.
 Your task is to identify the correct slide elements and call the corresponding functions to modify them according to the instructions.
-**Do not copy text from the instructions unless it is enclosed in quotation marks (“ ”).** Instead, **rephrase, summarize, or enhance** the text to improve clarity and impact. 
+**Do not copy text from the instructions unless it is enclosed in quotation marks (“ ”).** Instead, rephrase the text to improve clarity and impact.
+When describing visual positions, include exact coordinates such as top=0, left=0 to represent the top left of the slide.
 Only return function calls.
 """
 
@@ -76,8 +77,8 @@ Shape Attributes
 'bold': {'description': 'Whether the text is bolded', 'type':'boolean'},
 'width': {'description': 'Integer distance between left and right extents of shape in millimeters', 'type': 'integer'},
 'height': {'description': 'Integer distance between top and bottom extents of shape in millimeters', 'type': 'integer'},
-'top': {'description': 'Integer distance of the top edge of this shape from the top edge of the slide, in millimeters', 'type': 'integer'},
-'left': {'description': 'Integer distance of the left edge of this shape from the left edge of the slide, in millimeters', 'type': 'integer'},
+'top': {'description': 'Integer distance of the top edge of this shape from the top edge of the slide, in millimeters. 0 represents the top of the slide', 'type': 'integer'},
+'left': {'description': 'Integer distance of the left edge of this shape from the left edge of the slide, in millimeters. 0 represents the left of the slide', 'type': 'integer'},
 'fill_color': {'description': 'Shape fill color, in hex color code. If no fill, return "transparent"', 'type': 'string'},
 'has_border': {'description': 'Whether the shape has borders.', 'type': 'boolean'},
 'border_width': {'description': 'Width of border.', 'type': 'integer'},
@@ -92,8 +93,8 @@ Your task is to identify the correct image attributes to modify, and the corresp
 Image Attributes
 {
 'image_content': {'description': 'Description of new image that will overwrite the current one.', 'type':'string'},
-'width': {'description': 'Integer distance between left and right extents of shape in millimeters', 'type': 'integer'},
-'height': {'description': 'Integer distance between top and bottom extents of shape in millimeters', 'type': 'integer'},
+'width': {'description': 'Integer distance between left and right extents of shape in millimeters. 0 represents the top of the slide', 'type': 'integer'},
+'height': {'description': 'Integer distance between top and bottom extents of shape in millimeters. 0 represents the left of the slide', 'type': 'integer'},
 'top': {'description': 'Integer distance of the top edge of this shape from the top edge of the slide, in millimeters', 'type': 'integer'},
 'left': {'description': 'Integer distance of the left edge of this shape from the left edge of the slide, in millimeters', 'type': 'integer'},
 'has_border': {'description': 'Whether the shape has borders.', 'type': 'boolean'},
@@ -124,8 +125,8 @@ Chart Attributes
 {
 'width': {'description': 'Integer distance between left and right extents of shape in millimeters', 'type': 'integer'},
 'height': {'description': 'Integer distance between top and bottom extents of shape in millimeters', 'type': 'integer'},
-'top': {'description': 'Integer distance of the top edge of this shape from the top edge of the slide, in millimeters', 'type': 'integer'},
-'left': {'description': 'Integer distance of the left edge of this shape from the left edge of the slide, in millimeters', 'type': 'integer'},
+'top': {'description': 'Integer distance of the top edge of this shape from the top edge of the slide, in millimeters. 0 represents the top of the slide', 'type': 'integer'},
+'left': {'description': 'Integer distance of the left edge of this shape from the left edge of the slide, in millimeters. 0 represents the top of the slide', 'type': 'integer'},
 }
 """
 
@@ -142,7 +143,7 @@ Table Attributes
 
 select_autoshape_prompt = """
 You are a helpful AI assistant tasked with inserting a shape. You are given a pre-defined list of shapes, and are tasked to return the integer id of the shape that best matches the user query. 
-If such a shape does not exist, return -1 as the id. Return your answer in the following json format:
+If such a shape does not exist, use the next closest shape possible, (e.g. choose oval if circle is not available). Return your answer in the following json format:
 {'id': 1}
 """
 

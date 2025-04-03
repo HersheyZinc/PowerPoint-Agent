@@ -48,14 +48,17 @@ def query_tools(chat_history, toolkit, model="gpt-4o", temperature=0, max_tokens
 
 
 def generate_image(prompt, size="512x512"):
-    image = BytesIO(open("src/data/placeholder.png", "rb").read())
-    return image
-    response = CLIENT.images.generate(
-            prompt=prompt,
-            n=1,
-            size=size,
-            )
-    url = response.data[0].url
-    response = requests.get(url)
-    image = BytesIO(response.content)
+
+    try:
+        response = CLIENT.images.generate(
+                prompt=prompt,
+                n=1,
+                size=size,
+                )
+        url = response.data[0].url
+        response = requests.get(url)
+        image = BytesIO(response.content)
+
+    except:
+        image = BytesIO(open("src/data/placeholder.png", "rb").read())
     return image

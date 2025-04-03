@@ -1,7 +1,7 @@
 import streamlit as st
 from src.agent import AgentPPT
-import os
-
+import os, tempfile, shutil
+from io import StringIO
 st.set_page_config(layout="wide")
 
 
@@ -30,6 +30,11 @@ with col_right:
                 st.session_state["slide_imgs"] = agent.render()
                 slide_idx = 0
 
+            if st.button("Export Presentation"):
+                if len(agent.ppt.slides) > 0:
+                    agent.save_ppt()
+                    with open(agent.ppt_path, "rb") as f:
+                        st.download_button(label="Download", data=f, file_name="presentation.pptx")
 
     with tab_chat:
         chat = st.container(height=600)
@@ -87,4 +92,5 @@ with col_left:
 
     with slide_preview_container:
         st.session_state["slide_idx"] = slide_idx
-        slide_preview = st.image(st.session_state["slide_imgs"][slide_idx])
+        with st.container(border=True):
+            slide_preview = st.image(st.session_state["slide_imgs"][slide_idx], use_column_width=True)
