@@ -54,6 +54,19 @@ def set_shape_properties(shape, parameters):
                 if "bold" in parameters:
                     run.font.bold = parameters["bold"]
 
+    if "align_side" in parameters and "slide_height" in parameters and "slide_width" in parameters:
+        align_side = parameters["align_side"]
+        if "top" in align_side:
+            shape.top = 0
+        elif "bottom" in align_side:
+            shape.top = parameters["slide_height"] - shape.height
+        
+        if "left" in align_side:
+            shape.left = 0
+        elif "right" in align_side:
+            shape.right = parameters["slide_width"] - shape.width
+
+
 
 def set_table_properties(shape, parameters):
     if not shape.has_table:
@@ -113,6 +126,9 @@ def modify_shape(ppt, slide_idx, input_parameters, model='gpt-4o-mini'):
     messages = [{"role":"system", "content":prompt}, {"role":"system", "content":shape_content}, {"role":"user", "content":instructions}]
 
     output_parameters = query(messages, json_mode=True, model=model)
+    if "align_side" in output_parameters:
+        output_parameters["slide_height"] = ppt.slide_height
+        output_parameters["slide_width"] = ppt.slide_width
     set_image_properties(shape, output_parameters)
     set_table_properties(shape, output_parameters)
     set_shape_properties(shape, output_parameters)

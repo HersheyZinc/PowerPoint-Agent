@@ -83,6 +83,7 @@ Shape Attributes
 'has_border': {'description': 'Whether the shape has borders.', 'type': 'boolean'},
 'border_width': {'description': 'Width of border.', 'type': 'integer'},
 'border_color': {'description': 'Border color, in hex color code.', 'type':'string'},
+'align_side': {'description': 'The side of the slide to align the shape to. Must be one or a combination of top, bottom, left, right. Example: top_left to move shape to top left of the slide.', 'type': 'string'},
 }
 """
 
@@ -100,6 +101,7 @@ Image Attributes
 'has_border': {'description': 'Whether the shape has borders.', 'type': 'boolean'},
 'border_width': {'description': 'Width of border.', 'type': 'integer'},
 'border_color': {'description': 'Border color, in hex color code.', 'type':'string'},
+'align_side': {'description': 'The side of the slide to align the shape to. Must be one or a combination of top, bottom, left, right. Example: top_left to move shape to top left of the slide.', 'type': 'string'},
 }
 """
 
@@ -114,6 +116,7 @@ Table Attributes
 'height': {'description': 'Integer distance between top and bottom extents of table in millimeters, divided evenly across all rows.', 'type': 'integer'},
 'top': {'description': 'Integer distance of the top edge of this shape from the top edge of the slide, in millimeters', 'type': 'integer'},
 'left': {'description': 'Integer distance of the left edge of this shape from the left edge of the slide, in millimeters', 'type': 'integer'},
+'align_side': {'description': 'The side of the slide to align the shape to. Must be one or a combination of top, bottom, left, right. Example: top_left to move shape to top left of the slide.', 'type': 'string'},
 }
 """
 

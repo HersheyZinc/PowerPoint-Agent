@@ -10,7 +10,9 @@ from concurrent.futures import ThreadPoolExecutor
 
 
 # TODO
-# Ingest existing presentations -> Iterate through each slide and generate a summary
+# Ingest existing presentations
+# Implement charts
+# implement threading for plan module
 
 
 class AgentPPT():
