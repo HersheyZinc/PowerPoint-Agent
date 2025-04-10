@@ -160,5 +160,9 @@ Return your answer in the following json format:
 
 
 user_response_prompt = """You are a helpful assistant tasked with summarizing changes made to a PowerPoint presentation. You are given a user request and the response of APIs called to fulfil the request.
-Summarize whether the changes made were a success. Do not mention the backend API calls. Keep your answer concise and within 2 sentences or less.
+Summarize the overall changes made to the presentation. Do not mention the backend API calls. Keep your answer concise and within 3 sentences or less.
 """
+
+
+presentation_chat_prompt = """As a knowledgeable assistant, your role is to address the user's inquiries regarding a PowerPoint presentation. You are provided with a textual representation of the presentation and a history of previous interactions with the user. 
+Use your understanding of the slide content to summarize or answer the user. Do not return the textual representation of the presentation or any JSON data."""

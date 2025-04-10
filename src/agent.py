@@ -145,6 +145,15 @@ class AgentPPT():
         toolkit = [a.get_openai_args() for a in apis.PLANS]
         _, tool_calls = query_tools(messages, toolkit, model=self.model, max_tokens=16000)
 
+
+        if len(tool_calls) == 0:
+            messages = [{"role":"system", "content":prompts.plan_prompt}, {"role":"system", "content":ppt_content}] + self.chat_history
+            agent_response = query(messages, model=self.model, temperature=0.4)
+            self.chat_history.append({"role":"assistant", "content":agent_response})
+            self.log("Agent response: \n" + agent_response)
+            return agent_response
+
+
         output_str = ""
 
         for tool_call in tool_calls:

@@ -64,7 +64,7 @@ def set_shape_properties(shape, parameters):
         if "left" in align_side:
             shape.left = 0
         elif "right" in align_side:
-            shape.right = parameters["slide_width"] - shape.width
+            shape.left = parameters["slide_width"] - shape.width
 
 
 
