@@ -88,10 +88,8 @@ AgentPPT is deployed on **Streamlit Community Cloud (PaaS)**:
 - “Add three more slides explaining our business strategy.”
 - “Align the icons on slide 4 with those on slide 2.”
 
-Here’s the updated **GitHub README** with a citation added for [PPTC](https://github.com/gydpku/PPTC), which you can include under the **References** section:
-
 ---
 
 ## 📚 References
 
-- [PPTC: Programmatically Controllable LLM Agent for PowerPoint Tasks](https://github.com/gydpku/PPTC) – A research-driven system for programmatically controlling PowerPoint through LLM agents. Inspired our use of PowerPoint reader and writer modules.
+- [PPTC Benchmark: Evaluating Large Language Models for PowerPoint Task Completion](https://github.com/gydpku/PPTC) – benchmark that measures LLMs' task completion performance for PowerPoint software. Inspired our use of PowerPoint reader and writer modules.
